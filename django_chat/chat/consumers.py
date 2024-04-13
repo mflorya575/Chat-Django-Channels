@@ -54,4 +54,47 @@ class GroupConsumer(AsyncWebsocketConsumer):
         await self.accept()
 
     async def receive(self, text_data=None, bytes_data=None):
-        pass
+        text_data = json.loads(text_data)
+        type = text_data.get("type", None)
+        message = text_data.get("message", None)
+        author = text_data.get("author", None)
+        if type == "text_message":
+            user = await database_sync_to_async(User.objects.get)(email=author)
+            message = await database_sync_to_async(Message.objects.create)(
+                author=user,
+                content=message,
+                group=self.group
+            )
+        await self.channel_layer.group_send(self.group_uuid, {
+            "type": "text_message",
+            "message": str(message),
+            "author": author
+        })
+
+    async def text_message(self, event):
+        message = event["message"]
+        author = event.get("author")
+
+        returned_data = {
+            "type": "text_message",
+            "message": message,
+            "group_uuid": self.group_uuid
+        }
+        await self.send(json.dumps(
+            returned_data
+        ))
+
+        async def event_message(self, event):
+            message = event.get("message")
+            user = event.get("user", None)
+
+            await self.send(
+                json.dumps(
+                    {
+                        "type": "event_message",
+                        "message": message,
+                        "status": event.get("status", None),
+                        "user": user
+                    }
+                )
+            )
