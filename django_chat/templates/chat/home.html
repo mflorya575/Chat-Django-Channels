@@ -30,12 +30,45 @@
     <script>
         base_url = `${window.location.hostname}:${window.location.port}`
         const websocket = new WebSocket(`ws://${base_url}`)
+
         websocket.onopen = function (event) {
             console.log('client says connection opened')
             websocket.send("Client sends Welcome")
         }
+
         websocket.onmessage = function (event) {
             console.log("client says server message received: ", event)
         }
+
+
+        function add_event_to_all_buttons() {
+            /* Добавим прослушиватель событий, который отправляет сообщение о событии на все кнопки */
+            const keys = document.querySelectorAll('.group_option');
+            keys.forEach(item => {
+                    item.addEventListener('click', send_event_message)
+                }
+            )
+        }
+
+
+        function send_event_message(event) {
+            /* Отправим uuid и значение кнопки, которая была нажата */
+            const {target} = event;
+            group = target.value.split(" ")
+            group_uuid = group[1]
+            action = group[0] //Leave or Join or Open
+            if (action == "open_group") {
+                window.location.replace(`http://${base_url}groups/${group_uuid}/`)
+            } else {
+                data = {
+                    "type": action,
+                    "data": group_uuid,
+                }
+                websocket.send(JSON.stringify(data))
+            }
+        }
+
+        add_event_to_all_buttons()
+
     </script>
 {% endblock script %}
