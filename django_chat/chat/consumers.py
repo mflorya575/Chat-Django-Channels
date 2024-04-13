@@ -1,5 +1,8 @@
 import json
-from channels.generic.websocket import WebsocketConsumer
+from channels.generic.websocket import WebsocketConsumer, AsyncWebsocketConsumer
+from channels.layers import channel_layers
+from channels.db import database_sync_to_async
+import asyncio
 from accounts.models import User
 from .models import Event, Message, Group
 
@@ -38,3 +41,17 @@ class JoinAndLeave(WebsocketConsumer):
             "data": group_uuid
         }
         self.send(json.dumps(data))
+
+
+class GroupConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.group_uuid = str(self.scope["url_route"]["kwargs"]["uuid"])
+        self.group = await database_sync_to_async(Group.objects.get)(uuid=self.group_uuid)
+        await self.channel_layer.group_add(
+            self.group_uuid, self.channel_name)
+
+        self.user = self.scope["user"]
+        await self.accept()
+
+    async def receive(self, text_data=None, bytes_data=None):
+        pass
